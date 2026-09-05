@@ -82,12 +82,3 @@ PlantUML source files are in `docs/`:
 - `activity-shooting.puml` shows lifecycle decisions and parallel crew/location work.
 - `activity-recovery.puml` shows crew absence and recovery.
 
-## Assumptions
-
-The repository started with only a README and no prescribed input format, so the
-application uses deterministic console scenarios instead of external files or a
-menu. It does not model video files, persistence, networking, or a GUI; those
-would distract from the required patterns. Team members should add their real
-names, contribution statement, commit references, and debugging evidence to the
-submission PDF.
-
