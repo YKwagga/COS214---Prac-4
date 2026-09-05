@@ -15,6 +15,6 @@ WORKDIR /app
 COPY . .
 
 # Build the executable
-RUN make
+RUN make -B
 
 CMD ["./taskforge"]
