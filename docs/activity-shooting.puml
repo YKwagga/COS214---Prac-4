@@ -1,0 +1,20 @@
+@startuml
+|Production Manager|
+start
+:Start shooting;
+fork
+  |Location Team|
+  :Create all-elements iterator;
+  :Mark each cleared Location filmed;
+fork again
+  |Crew Coordinator|
+  :Create CrewIterator;
+  :Check VIP and other crew presence;
+end fork
+if (Any crew missing?) then (yes)
+  :Transition to VIPMissing or OtherMissing;
+else (no)
+  :Request finishShooting;
+endif
+stop
+@enduml
