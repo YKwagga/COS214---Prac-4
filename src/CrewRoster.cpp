@@ -28,7 +28,7 @@ bool CrewRoster::missingOther() const {
     CrewIterator it = iterator();
     while (it.hasNext()) {
         CrewMember* member = it.next();
-        if (!member->isVip() && !member->isPresent()) return true;
+        if (!member->isVip() && member->requiredOnSite() && !member->isPresent()) return true;
     }
     return false;
 }
