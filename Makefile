@@ -16,7 +16,13 @@ run: all
 memory: all
 	valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET)
 
+ifeq ($(OS),Windows_NT)
 clean:
-	rm -f $(TARGET)
+	@if exist $(TARGET) del /Q $(TARGET)
+	@if exist $(TARGET).exe del /Q $(TARGET).exe
+else
+clean:
+	rm -f $(TARGET) $(TARGET).exe
+endif
 
 .PHONY: all run memory clean

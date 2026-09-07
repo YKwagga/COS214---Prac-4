@@ -9,9 +9,34 @@ CrewIterator CrewRoster::iterator() const {
     return CrewIterator(result);
 }
 
+CrewMember* CrewRoster::find(const std::string& memberName) const {
+    CrewIterator it = iterator();
+    while (it.hasNext()) {
+        CrewMember* member = it.next();
+        if (member->name() == memberName) return member;
+    }
+    return nullptr;
+}
+
+bool CrewRoster::replace(const std::string& memberName,
+                         std::unique_ptr<CrewMember> replacement) {
+    if (!replacement) return false;
+    for (std::vector<std::unique_ptr<CrewMember> >::iterator it = members.begin();
+         it != members.end(); ++it) {
+        if ((*it)->name() == memberName) {
+            *it = std::move(replacement);
+            return true;
+        }
+    }
+    return false;
+}
+
 bool CrewRoster::allPresent() const {
     CrewIterator it = iterator();
-    while (it.hasNext()) if (!it.next()->isPresent()) return false;
+    while (it.hasNext()) {
+        CrewMember* member = it.next();
+        if (member->requiredOnSite() && !member->isPresent()) return false;
+    }
     return true;
 }
 
@@ -30,5 +55,11 @@ bool CrewRoster::missingOther() const {
         CrewMember* member = it.next();
         if (!member->isVip() && member->requiredOnSite() && !member->isPresent()) return true;
     }
+    return false;
+}
+
+bool CrewRoster::contains(const std::string& memberName) const {
+    CrewIterator it = iterator();
+    while (it.hasNext()) if (it.next()->name() == memberName) return true;
     return false;
 }

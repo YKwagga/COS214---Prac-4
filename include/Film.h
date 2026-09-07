@@ -17,6 +17,11 @@ public:
     bool startShooting();
     bool refreshOperationalState();
     bool finishShooting();
+    bool contactAuthorities();
+    bool reportInjury(const std::string& memberName);
+    bool replaceCrewMember(const std::string& memberName,
+                           std::unique_ptr<CrewMember> replacement);
+    bool resumeShooting();
     const std::string& stateName() const;
     FilmIterator createIterator(FilmTraversalMode mode) const;
     CrewRoster& crew();
