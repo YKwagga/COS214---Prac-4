@@ -1,0 +1,65 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="9A0ozCyrsm82HoyQuRT8">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-1" parent="1" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=right;labelPosition=left;verticalLabelPosition=top;verticalAlign=bottom;fontSize=13;spacingTop=0;spacing=-28;spacingRight=-100;" value="&lt;b&gt;Find Replacement&lt;/b&gt;" vertex="1">
+          <mxGeometry height="260" width="720" x="150" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-3" parent="1" style="ellipse;html=1;shape=startState;fillColor=#000000;strokeColor=#ff0000;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="170" y="237.5" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-4" edge="1" parent="1" source="lGGldfvGS3qXdJ-VnS2Y-3" style="edgeStyle=orthogonalEdgeStyle;html=1;verticalAlign=bottom;endArrow=open;endSize=8;strokeColor=#ff0000;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="lGGldfvGS3qXdJ-VnS2Y-10" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="252.5" />
+              <mxPoint x="310" y="252.5" />
+            </Array>
+            <mxPoint x="300" y="287.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-14" edge="1" parent="1" source="lGGldfvGS3qXdJ-VnS2Y-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="lGGldfvGS3qXdJ-VnS2Y-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-10" parent="1" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;" value="Ask current crew to take over" vertex="1">
+          <mxGeometry height="40" width="130" x="265" y="232.5" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-11" parent="1" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;" value="Contact talent agency for replacement" vertex="1">
+          <mxGeometry height="40" width="130" x="640" y="337.5" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-22" edge="1" parent="1" source="lGGldfvGS3qXdJ-VnS2Y-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="lGGldfvGS3qXdJ-VnS2Y-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-12" parent="1" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;" value="Resume filming" vertex="1">
+          <mxGeometry height="40" width="100" x="670" y="232.5" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-15" edge="1" parent="1" source="lGGldfvGS3qXdJ-VnS2Y-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="lGGldfvGS3qXdJ-VnS2Y-12">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="252.5769230769231" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-18" edge="1" parent="1" source="lGGldfvGS3qXdJ-VnS2Y-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="lGGldfvGS3qXdJ-VnS2Y-11">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="474.9230769230769" y="337.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-13" parent="1" style="rhombus;whiteSpace=wrap;html=1;shapeInside=1;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="460" y="237.5" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-16" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="[Someone able to take over]" vertex="1">
+          <mxGeometry height="30" width="160" x="495" y="227.5" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-19" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;rotation=-90;" value="[No one able to take over]" vertex="1">
+          <mxGeometry height="30" width="145" x="392.5" y="325" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-20" edge="1" parent="1" source="lGGldfvGS3qXdJ-VnS2Y-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.35;entryY=1.043;entryDx=0;entryDy=0;entryPerimeter=0;" target="lGGldfvGS3qXdJ-VnS2Y-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lGGldfvGS3qXdJ-VnS2Y-21" parent="1" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#ff0000;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="810" y="237.5" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
