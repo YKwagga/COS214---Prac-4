@@ -1,4 +1,4 @@
-#include "test_framework.h"
+/*#include "test_framework.h"
 #include "Film.h"
 #include "CrewBasics.h"
 #include "CrewDecorator.h"
@@ -687,17 +687,6 @@ TEST("Film: VIP injury cancels the shoot permanently") {
 // MAIN EXECUTION
 // ============================================================================
 
-/*
-int main() {
-    std::cout << "\n>>> RUNNING ORIGINAL SCENARIOS <<<\n";
-    runHappyPath();
-    runVipCancellationScenario();
-
-    std::cout << "\n\n>>> RUNNING UNIT TESTS <<<\n\n";
-    return testfw::run_all_tests();
-}
-*/
-
 namespace {
 const char* const COLOR_RESET = "\033[0m";
 const char* const COLOR_TITLE = "\033[1;36m";
@@ -937,4 +926,220 @@ int main() {
     }
     std::cout << COLOR_TITLE << "Goodbye.\n" << COLOR_RESET;
     return 0;
+}
+*/
+
+
+
+
+
+
+
+
+
+
+#include "Film.h"
+#include "CrewBasics.h"
+#include "CrewDecorator.h"
+#include "Location.h"
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <vector>
+
+static void check(bool condition, const char* message = "check failed") {
+    if (!condition) throw std::runtime_error(message);
+}
+
+static void expectCrewIteratorError() {
+    std::vector<CrewMember*> empty;
+    CrewIterator iterator(empty);
+    check(!iterator.hasNext());
+    try { iterator.next(); } catch (const std::out_of_range&) { return; }
+    throw std::runtime_error("crew iterator did not throw");
+}
+
+static void expectFilmIteratorErrors(Film& film) {
+    FilmIterator iterator = film.createIterator(FilmTraversalMode::AllElements);
+    while (iterator.hasNext()) iterator.next();
+    try { iterator.next(); } catch (const std::out_of_range&) {}
+    try { iterator.next(); } catch (const std::out_of_range&) { return; }
+    throw std::runtime_error("film iterator did not throw");
+}
+
+static void testCompositeAndIterators() {
+    Location uncleared("Stage", false);
+    check(uncleared.name() == "Stage" && uncleared.isLocation());
+    check(uncleared.needsClearance() && !uncleared.isFilmed());
+    uncleared.markFilmed();
+    uncleared.clearForShooting();
+    uncleared.markFilmed();
+    check(uncleared.isFilmed() && !uncleared.versionToken());
+    std::vector<FilmElement*> noChildren;
+    uncleared.appendChildren(noChildren);
+    check(noChildren.empty());
+    uncleared.print(1);
+
+    Area empty("Empty");
+    check(!empty.isFilmed() && !empty.isLocation());
+    empty.add(std::unique_ptr<FilmElement>(new Location("Leaf", true)));
+    check(!empty.needsClearance() && !empty.isFilmed());
+    empty.markFilmed();
+    check(empty.isFilmed());
+    empty.print(0);
+    std::size_t version = *empty.versionToken();
+    check(!empty.remove("Missing") && empty.remove("Leaf"));
+    check(*empty.versionToken() != version);
+
+    Area root("Root");
+    std::unique_ptr<Area> nested(new Area("Nested"));
+    nested->add(std::unique_ptr<FilmElement>(new Location("Nested Leaf", true)));
+    root.add(std::move(nested));
+    std::vector<FilmElement*> children;
+    root.appendChildren(children);
+    check(children.size() == 1);
+    children[0]->print(1);
+
+    Film film("Iterator Film");
+    film.add(std::unique_ptr<FilmElement>(new Location("Clear", true)));
+    FilmIterator all = film.createIterator(FilmTraversalMode::AllElements);
+    check(all.hasNext() && all.next()->name() == "Iterator Film");
+    FilmIterator clearance = film.createIterator(FilmTraversalMode::LocationsNeedingClearance);
+    check(!clearance.hasNext());
+    film.add(std::unique_ptr<FilmElement>(new Location("New", false)));
+    check(all.isInvalidated() && !all.hasNext() && !clearance.hasNext());
+    try { all.next(); } catch (const std::runtime_error&) {}
+    expectFilmIteratorErrors(film);
+    expectCrewIteratorError();
+}
+
+static std::unique_ptr<CrewMember> role(const std::string& name,
+                                        const std::string& title, bool vip) {
+    return std::unique_ptr<CrewMember>(new RoleDecorator(
+        std::unique_ptr<CrewMember>(new OnSiteCrew(name)), title, vip));
+}
+
+static void testCrew() {
+    OnSiteCrew onSite("OnSite");
+    OffSiteCrew offSite("OffSite");
+    check(onSite.requiredOnSite() && !offSite.requiredOnSite());
+    check(onSite.description() == "On-site crew" && offSite.description() == "Off-site crew");
+    onSite.setPresent(false);
+    offSite.setPresent(false);
+
+    RoleDecorator decorated(std::unique_ptr<CrewMember>(new OnSiteCrew("Actor")), "Actor", false);
+    check(decorated.name() == "Actor" && !decorated.isVip() && decorated.requiredOnSite());
+    check(decorated.description() == "On-site crew, role: Actor");
+    decorated.setPresent(false);
+    check(!decorated.isPresent());
+    RoleDecorator vip(std::unique_ptr<CrewMember>(new OnSiteCrew("Director")), "Director", true);
+    RoleDecorator stacked(std::unique_ptr<CrewMember>(new RoleDecorator(
+        std::unique_ptr<CrewMember>(new OnSiteCrew("Producer")), "Producer", true)), "Executive", false);
+    check(vip.isVip() && stacked.isVip());
+
+    CrewRoster roster;
+    roster.add(std::unique_ptr<CrewMember>(new OnSiteCrew("Required")));
+    roster.add(std::unique_ptr<CrewMember>(new OffSiteCrew("Remote")));
+    check(roster.contains("Required") && !roster.contains("Unknown"));
+    check(roster.find("Required") != 0 && roster.find("Unknown") == 0);
+    check(roster.allPresent() && !roster.missingVip() && !roster.missingOther());
+    check(!roster.replace("Unknown", std::unique_ptr<CrewMember>(new OnSiteCrew("X"))));
+    check(!roster.replace("Required", std::unique_ptr<CrewMember>()));
+    check(roster.replace("Required", std::unique_ptr<CrewMember>(new OnSiteCrew("Required"))));
+}
+
+static void setupFilm(Film& film, const char* location, bool cleared) {
+    film.add(std::unique_ptr<FilmElement>(new Location(location, cleared)));
+    film.crew().add(role("Worker", "Crew", false));
+    film.crew().add(role("VIP", "Director", true));
+    film.crew().add(std::unique_ptr<CrewMember>(new OffSiteCrew("Remote")));
+}
+
+static void testNotShootingAndReadyStates() {
+    Film film("State Film");
+    setupFilm(film, "Stage", false);
+    check(film.stateName() == "NotShooting");
+    check(!film.startShooting() && !film.finishShooting() && !film.resumeShooting());
+    check(!film.confirmAreas());
+    check(film.contactAuthorities() && film.stateName() == "ReadyForShoot");
+    check(film.confirmAreas() && film.startShooting());
+    check(!film.startShooting());
+    check(!film.contactAuthorities() && !film.reportInjury("Unknown"));
+    check(!film.replaceCrewMember("Unknown", role("X", "Crew", false)));
+    film.add(std::unique_ptr<FilmElement>(new Location("Reshoot", true)));
+    check(film.stateName() == "NotShooting");
+    check(film.replaceCrewMember("Worker", role("Worker", "Replacement", false)));
+    check(film.stateName() == "ReadyForShoot");
+    check(!film.reportInjury("Unknown"));
+}
+
+static void clearAndFilm(Film& film) {
+    FilmIterator locations = film.createIterator(FilmTraversalMode::LocationsNeedingClearance);
+    while (locations.hasNext()) locations.next()->clearForShooting();
+    FilmIterator all = film.createIterator(FilmTraversalMode::AllElements);
+    while (all.hasNext()) all.next()->markFilmed();
+}
+
+static void testShootingAndCompletion() {
+    Film film("Shooting Film");
+    setupFilm(film, "Stage", true);
+    check(film.confirmAreas() && film.startShooting());
+    check(film.confirmAreas());
+    check(!film.startShooting());
+    check(!film.contactAuthorities());
+    check(!film.reportInjury("Unknown"));
+    check(!film.replaceCrewMember("Worker", role("Replacement", "Crew", false)));
+    check(!film.resumeShooting());
+    check(!film.finishShooting());
+    check(!film.reportInjury("Worker"));
+    check(film.stateName() == "OtherMissing");
+    check(!film.confirmAreas());
+    check(!film.startShooting());
+    check(!film.finishShooting());
+    check(!film.contactAuthorities());
+    check(!film.reportInjury("Unknown"));
+    check(!film.reportInjury("Worker"));
+    check(!film.replaceCrewMember("Unknown", role("X", "Crew", false)));
+    check(film.replaceCrewMember("Worker", role("Worker", "Crew", false)));
+    check(film.stateName() == "Shooting");
+    check(!film.resumeShooting());
+    clearAndFilm(film);
+    check(film.finishShooting() && film.stateName() == "Finished");
+    check(!film.confirmAreas());
+    check(!film.startShooting());
+    check(!film.finishShooting());
+    check(!film.contactAuthorities());
+    check(!film.reportInjury("Worker"));
+    check(!film.replaceCrewMember("Worker", role("X", "Crew", false)));
+    check(!film.resumeShooting() && film.refreshOperationalState());
+}
+
+static void testCancelledState() {
+    Film film("Cancelled Film");
+    setupFilm(film, "Stage", true);
+    check(film.confirmAreas() && film.startShooting());
+    check(!film.reportInjury("VIP") && film.stateName() == "Cancelled");
+    check(!film.confirmAreas());
+    check(!film.startShooting());
+    check(!film.refreshOperationalState());
+    check(!film.finishShooting());
+    check(!film.contactAuthorities());
+    check(!film.reportInjury("VIP"));
+    check(!film.replaceCrewMember("VIP", role("VIP", "Director", true)));
+    check(!film.resumeShooting());
+}
+
+int main() {
+    try {
+        testCompositeAndIterators();
+        testCrew();
+        testNotShootingAndReadyStates();
+        testShootingAndCompletion();
+        testCancelledState();
+        std::cout << "main2 coverage driver passed\n";
+        return 0;
+    } catch (const std::exception& error) {
+        std::cerr << "main2 coverage driver failed: " << error.what() << "\n";
+        return 1;
+    }
 }
