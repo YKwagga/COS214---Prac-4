@@ -1,21 +1,17 @@
 #include "Film.h"
 #include <iostream>
 
+// State names below are kept identical to StateDPrac4.drawio:
+//   NotShooting -> ReadyForShoot -> Shooting -> OtherMissing -> Shooting
+//   Shooting -> Cancelled (terminal, when a VIP goes missing/is injured)
+// "Finished" is the normal completion path; it is not shown separately in
+// the state diagram but does not conflict with any labelled state there.
 namespace {
-class InitialState : public FilmState {
+class NotShootingState : public FilmState {
 public:
-    const std::string& name() const { static const std::string value = "Initial"; return value; }
-    bool confirmAreas(Film& film);
+    const std::string& name() const { static const std::string value = "NotShooting"; return value; }
+    bool confirmAreas(Film& film) { return refresh(film); }
     bool startShooting(Film&) { std::cout << "Cannot start: areas are not confirmed.\n"; return false; }
-    bool refresh(Film&) { return false; }
-    bool finish(Film&) { std::cout << "Cannot finish: shooting has not started.\n"; return false; }
-};
-
-class PendingAreaConfirmationState : public FilmState {
-public:
-    const std::string& name() const { static const std::string value = "PendingAreaConfirmation"; return value; }
-    bool confirmAreas(Film& film);
-    bool startShooting(Film&) { std::cout << "Cannot start: an area still needs clearance.\n"; return false; }
     bool refresh(Film& film);
     bool finish(Film&) { std::cout << "Cannot finish: shooting has not started.\n"; return false; }
 };
@@ -38,15 +34,6 @@ public:
     bool finish(Film& film);
 };
 
-class VIPMissingState : public FilmState {
-public:
-    const std::string& name() const { static const std::string value = "VIPMissing"; return value; }
-    bool confirmAreas(Film&) { return false; }
-    bool startShooting(Film&) { std::cout << "Cannot shoot: a VIP crew member is missing.\n"; return false; }
-    bool refresh(Film& film);
-    bool finish(Film&) { std::cout << "Cannot finish: a VIP crew member is missing.\n"; return false; }
-};
-
 class OtherMissingState : public FilmState {
 public:
     const std::string& name() const { static const std::string value = "OtherMissing"; return value; }
@@ -54,6 +41,18 @@ public:
     bool startShooting(Film&) { std::cout << "Cannot shoot: required crew is missing.\n"; return false; }
     bool refresh(Film& film);
     bool finish(Film&) { std::cout << "Cannot finish: required crew is missing.\n"; return false; }
+};
+
+// Terminal state: reached when a VIP crew member goes missing/is injured
+// during shooting. Matches ActDiagram3.drawio, where a VIP injury routes
+// straight to "Cancel shoot" and an end node -- there is no resume path.
+class CancelledState : public FilmState {
+public:
+    const std::string& name() const { static const std::string value = "Cancelled"; return value; }
+    bool confirmAreas(Film&) { std::cout << "Cannot confirm areas: the shoot was cancelled.\n"; return false; }
+    bool startShooting(Film&) { std::cout << "Cannot start: the shoot was cancelled.\n"; return false; }
+    bool refresh(Film&) { return false; }
+    bool finish(Film&) { std::cout << "Cannot finish: the shoot was cancelled.\n"; return false; }
 };
 
 class FinishedState : public FilmState {
@@ -65,14 +64,7 @@ public:
     bool finish(Film&) { std::cout << "Film is already finished.\n"; return false; }
 };
 
-bool InitialState::confirmAreas(Film& film) {
-    film.setState(std::unique_ptr<FilmState>(new PendingAreaConfirmationState()));
-    return film.refreshOperationalState();
-}
-
-bool PendingAreaConfirmationState::confirmAreas(Film& film) { return refresh(film); }
-
-bool PendingAreaConfirmationState::refresh(Film& film) {
+bool NotShootingState::refresh(Film& film) {
     FilmIterator locations = film.createIterator(FilmTraversalMode::LocationsNeedingClearance);
     if (locations.hasNext()) {
         std::cout << "Area confirmation pending: " << locations.next()->name() << " needs clearance.\n";
@@ -95,8 +87,8 @@ bool ReadyForShootState::startShooting(Film& film) {
 
 bool ShootingState::refresh(Film& film) {
     if (film.crew().missingVip()) {
-        film.setState(std::unique_ptr<FilmState>(new VIPMissingState()));
-        std::cout << "State changed: VIP crew member missing.\n";
+        film.setState(std::unique_ptr<FilmState>(new CancelledState()));
+        std::cout << "Shoot cancelled: a VIP crew member is missing.\n";
         return false;
     }
     if (film.crew().missingOther()) {
@@ -118,16 +110,10 @@ bool ShootingState::finish(Film& film) {
     return true;
 }
 
-bool VIPMissingState::refresh(Film& film) {
-    if (film.crew().missingVip()) return false;
-    film.setState(std::unique_ptr<FilmState>(new ShootingState()));
-    std::cout << "VIP returned. Shooting can continue.\n";
-    return film.refreshOperationalState();
-}
-
 bool OtherMissingState::refresh(Film& film) {
     if (film.crew().missingVip()) {
-        film.setState(std::unique_ptr<FilmState>(new VIPMissingState()));
+        film.setState(std::unique_ptr<FilmState>(new CancelledState()));
+        std::cout << "Shoot cancelled: a VIP crew member is missing.\n";
         return false;
     }
     if (film.crew().missingOther()) return false;
@@ -138,12 +124,13 @@ bool OtherMissingState::refresh(Film& film) {
 }
 
 Film::Film(const std::string& title)
-    : Area(title), state(new InitialState()) {}
+    : Area(title), state(new NotShootingState()) {}
 
 void Film::add(std::unique_ptr<FilmElement> child) {
     Area::add(std::move(child));
-    if (stateName() != "Initial" && stateName() != "Finished")
-        state.reset(new PendingAreaConfirmationState());
+    const std::string& current = stateName();
+    if (current == "ReadyForShoot" || current == "Shooting" || current == "OtherMissing")
+        state.reset(new NotShootingState());
 }
 
 bool Film::confirmAreas() { return state->confirmAreas(*this); }
