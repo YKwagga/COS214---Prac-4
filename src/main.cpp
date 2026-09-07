@@ -23,7 +23,7 @@ static void printTraversal(FilmIterator iterator) {
         std::cout << "  visited: " << iterator.next()->name() << "\n";
 }
 
-static void runHappyPath() {
+void runHappyPath() {
     Film film("The Last Frame");
 
     std::unique_ptr<Area> production(new Area("Production Department"));
@@ -95,7 +95,7 @@ static void runHappyPath() {
     std::cout << "Final state: " << film.stateName() << "\n";
 }
 
-static void runVipCancellationScenario() {
+void runVipCancellationScenario() {
     std::cout << "\n=== VIP missing: shoot is cancelled permanently ===\n";
     Film film("Second Unit");
     film.add(std::unique_ptr<FilmElement>(new Location("Rooftop", true)));
@@ -619,10 +619,75 @@ TEST("Film: adding elements after Finished does not resurrect the film") {
     CHECK(film.stateName() == "Finished");
 }
 
+TEST("Film: nested structural changes invalidate film iterators and reset readiness") {
+    Film film("Nested mutation");
+    std::unique_ptr<Area> studio(new Area("Studio"));
+    Area* studioPtr = studio.get();
+    studio->add(std::unique_ptr<FilmElement>(new Location("Stage", true)));
+    film.add(std::move(studio));
+
+    REQUIRE(film.confirmAreas() == true);
+    REQUIRE(film.startShooting() == true);
+    FilmIterator traversal = film.createIterator(FilmTraversalMode::AllElements);
+    studioPtr->add(std::unique_ptr<FilmElement>(new Location("Pickup", true)));
+
+    CHECK(traversal.isInvalidated() == true);
+    CHECK(film.stateName() == "NotShooting");
+}
+
+TEST("Film: absent off-site crew does not block area confirmation") {
+    Film film("Remote producer");
+    film.add(std::unique_ptr<FilmElement>(new Location("Stage", true)));
+    std::unique_ptr<CrewMember> producer(new RoleDecorator(
+        std::unique_ptr<CrewMember>(new OffSiteCrew("Ravi")), "Producer", true));
+    producer->setPresent(false);
+    film.crew().add(std::move(producer));
+
+    CHECK(film.confirmAreas() == true);
+    CHECK(film.stateName() == "ReadyForShoot");
+}
+
+TEST("Film: authorities clear remaining locations") {
+    Film film("Authority clearance");
+    film.add(std::unique_ptr<FilmElement>(new Location("Cleared", true)));
+    film.add(std::unique_ptr<FilmElement>(new Location("Pending", false)));
+
+    CHECK(film.confirmAreas() == false);
+    CHECK(film.contactAuthorities() == true);
+    CHECK(film.stateName() == "ReadyForShoot");
+}
+
+TEST("Film: non-VIP injury can be resolved with a replacement") {
+    Film film("Replacement recovery");
+    film.add(std::unique_ptr<FilmElement>(new Location("Stage", true)));
+    film.crew().add(nonVip("Jon"));
+    REQUIRE(film.confirmAreas() == true);
+    REQUIRE(film.startShooting() == true);
+
+    CHECK(film.reportInjury("Jon") == false);
+    CHECK(film.stateName() == "OtherMissing");
+    CHECK(film.replaceCrewMember("Jon", nonVip("Alex")) == true);
+    CHECK(film.stateName() == "Shooting");
+}
+
+TEST("Film: VIP injury cancels the shoot permanently") {
+    Film film("VIP injury");
+    film.add(std::unique_ptr<FilmElement>(new Location("Stage", true)));
+    film.crew().add(vip("Maya"));
+    REQUIRE(film.confirmAreas() == true);
+    REQUIRE(film.startShooting() == true);
+
+    CHECK(film.reportInjury("Maya") == false);
+    CHECK(film.stateName() == "Cancelled");
+    CHECK(film.replaceCrewMember("Maya", vip("Alex")) == false);
+    CHECK(film.resumeShooting() == false);
+}
+
 // ============================================================================
 // MAIN EXECUTION
 // ============================================================================
 
+/*
 int main() {
     std::cout << "\n>>> RUNNING ORIGINAL SCENARIOS <<<\n";
     runHappyPath();
@@ -630,4 +695,246 @@ int main() {
 
     std::cout << "\n\n>>> RUNNING UNIT TESTS <<<\n\n";
     return testfw::run_all_tests();
+}
+*/
+
+namespace {
+const char* const COLOR_RESET = "\033[0m";
+const char* const COLOR_TITLE = "\033[1;36m";
+const char* const COLOR_OPTION = "\033[1;33m";
+const char* const COLOR_SUCCESS = "\033[1;32m";
+const char* const COLOR_ERROR = "\033[1;31m";
+const char* const COLOR_MUTED = "\033[0;90m";
+
+void title(const std::string& text) {
+    std::cout << "\n" << COLOR_TITLE << "==== " << text << " ====\n" << COLOR_RESET;
+}
+
+std::string readText(const std::string& prompt) {
+    std::cout << prompt;
+    std::string value;
+    std::getline(std::cin, value);
+    return value;
+}
+
+int readChoice(const std::string& prompt, int minimum, int maximum) {
+    while (true) {
+        std::string input = readText(prompt);
+        std::stringstream stream(input);
+        int choice = 0;
+        char extra = '\0';
+        if ((stream >> choice) && !(stream >> extra) && choice >= minimum && choice <= maximum)
+            return choice;
+        std::cout << COLOR_ERROR << "Please enter a number from " << minimum << " to "
+                  << maximum << ".\n" << COLOR_RESET;
+    }
+}
+
+bool readYesNo(const std::string& prompt) {
+    while (true) {
+        std::string answer = readText(prompt + " (y/n): ");
+        if (answer == "y" || answer == "Y") return true;
+        if (answer == "n" || answer == "N") return false;
+        std::cout << COLOR_ERROR << "Please answer y or n.\n" << COLOR_RESET;
+    }
+}
+
+std::unique_ptr<CrewMember> makeCrewMember(const std::string& name,
+                                           bool onSite,
+                                           const std::string& role,
+                                           bool vipMember) {
+    std::unique_ptr<CrewMember> member(onSite
+        ? static_cast<CrewMember*>(new OnSiteCrew(name))
+        : static_cast<CrewMember*>(new OffSiteCrew(name)));
+    if (!role.empty()) member.reset(new RoleDecorator(std::move(member), role, vipMember));
+    return member;
+}
+
+std::unique_ptr<Film> createSampleFilm() {
+    std::unique_ptr<Film> film(new Film("The Last Frame"));
+    std::unique_ptr<Area> production(new Area("Production Department"));
+    std::unique_ptr<Area> studio(new Area("Studio Complex"));
+    studio->add(std::unique_ptr<FilmElement>(new Location("Stage 1", true)));
+    studio->add(std::unique_ptr<FilmElement>(new Location("Stage 2", false)));
+    production->add(std::move(studio));
+    production->add(std::unique_ptr<FilmElement>(new Location("Backlot", true)));
+    film->add(std::move(production));
+    film->add(std::unique_ptr<FilmElement>(new Location("Sound Booth", true)));
+    film->crew().add(makeCrewMember("Maya", true, "Director", true));
+    film->crew().add(makeCrewMember("Jon", true, "Actor", false));
+    film->crew().add(makeCrewMember("Ravi", false, "Producer", true));
+    return film;
+}
+
+FilmElement* findElement(Film& film, const std::string& name) {
+    FilmIterator iterator = film.createIterator(FilmTraversalMode::AllElements);
+    while (iterator.hasNext()) {
+        FilmElement* element = iterator.next();
+        if (element->name() == name) return element;
+    }
+    return nullptr;
+}
+
+void showFilm(Film& film) {
+    title("Film status");
+    std::cout << "Title: " << film.name() << "\nState: " << film.stateName() << "\n\n";
+    film.print(0);
+    std::cout << "\nCrew:\n";
+    CrewIterator iterator = film.crew().iterator();
+    while (iterator.hasNext()) {
+        CrewMember* member = iterator.next();
+        std::cout << "  " << member->name() << " - " << member->description()
+                  << " [" << (member->isPresent() ? "present" : "unavailable") << "]\n";
+    }
+}
+
+void clearLocation(Film& film) {
+    std::string name = readText("Location to clear: ");
+    FilmIterator iterator = film.createIterator(FilmTraversalMode::LocationsNeedingClearance);
+    while (iterator.hasNext()) {
+        FilmElement* location = iterator.next();
+        if (location->name() == name) {
+            location->clearForShooting();
+            std::cout << COLOR_SUCCESS << "Location cleared.\n" << COLOR_RESET;
+            return;
+        }
+    }
+    std::cout << COLOR_ERROR << "That location either does not exist or is already clear.\n"
+              << COLOR_RESET;
+}
+
+void addElement(Film& film) {
+    int kind = readChoice("1. Location  2. Area: ", 1, 2);
+    std::string name = readText("Name: ");
+    if (name.empty()) {
+        std::cout << COLOR_ERROR << "A name is required.\n" << COLOR_RESET;
+        return;
+    }
+    if (kind == 1) {
+        film.add(std::unique_ptr<FilmElement>(new Location(name, readYesNo("Already cleared"))));
+    } else {
+        film.add(std::unique_ptr<FilmElement>(new Area(name)));
+    }
+    std::cout << COLOR_SUCCESS << "Element added.\n" << COLOR_RESET;
+}
+
+void createCrew(Film& film) {
+    std::string name = readText("Crew member name: ");
+    bool onSite = readYesNo("Required on site");
+    std::string role = readText("Role (leave blank for base decorator-free member): ");
+    bool vipMember = !role.empty() && readYesNo("VIP responsibility");
+    film.crew().add(makeCrewMember(name, onSite, role, vipMember));
+    std::cout << COLOR_SUCCESS << "Crew member added.\n" << COLOR_RESET;
+}
+
+void togglePresence(Film& film) {
+    std::string name = readText("Crew member: ");
+    CrewMember* member = film.crew().find(name);
+    if (!member) {
+        std::cout << COLOR_ERROR << "Crew member not found.\n" << COLOR_RESET;
+        return;
+    }
+    member->setPresent(!member->isPresent());
+    film.refreshOperationalState();
+    std::cout << COLOR_SUCCESS << name << " is now "
+              << (member->isPresent() ? "present" : "unavailable") << ".\n" << COLOR_RESET;
+}
+
+void reportInjury(Film& film) {
+    std::string name = readText("Injured crew member: ");
+    film.reportInjury(name);
+}
+
+void replaceCrew(Film& film) {
+    std::string injured = readText("Member to replace: ");
+    std::string name = readText("Replacement name: ");
+    bool onSite = readYesNo("Replacement is required on site");
+    std::string role = readText("Replacement role: ");
+    bool vipMember = !role.empty() && readYesNo("Replacement is VIP");
+    film.replaceCrewMember(injured, makeCrewMember(name, onSite, role, vipMember));
+}
+
+void markFilmed(Film& film) {
+    std::string name = readText("Location filmed: ");
+    FilmElement* element = findElement(film, name);
+    if (!element || !element->isLocation()) {
+        std::cout << COLOR_ERROR << "Location not found.\n" << COLOR_RESET;
+        return;
+    }
+    element->markFilmed();
+    std::cout << COLOR_SUCCESS << "Location marked filmed when clearance permits.\n" << COLOR_RESET;
+}
+
+void iteratorDemo(Film& film) {
+    title("Iterator demonstration");
+    FilmIterator first = film.createIterator(FilmTraversalMode::AllElements);
+    FilmIterator second = film.createIterator(FilmTraversalMode::LocationsNeedingClearance);
+    if (first.hasNext()) std::cout << "First iterator: " << first.next()->name() << "\n";
+    std::cout << "Second iterator has pending location: " << (second.hasNext() ? "yes" : "no") << "\n";
+    film.add(std::unique_ptr<FilmElement>(new Location("Iterator Demo Set", false)));
+    std::cout << "After a structural change, first invalidated: "
+              << (first.isInvalidated() ? "yes" : "no") << ", second invalidated: "
+              << (second.isInvalidated() ? "yes" : "no") << "\n";
+}
+
+void printMenu() {
+    std::cout << "\n" << COLOR_OPTION
+              << "1" << COLOR_RESET << "  Show film and crew\n"
+              << COLOR_OPTION << "2" << COLOR_RESET << "  Add a location or area\n"
+              << COLOR_OPTION << "3" << COLOR_RESET << "  Remove a top-level element\n"
+              << COLOR_OPTION << "4" << COLOR_RESET << "  Clear one location\n"
+              << COLOR_OPTION << "5" << COLOR_RESET << "  Contact authorities for clearance\n"
+              << COLOR_OPTION << "6" << COLOR_RESET << "  Confirm areas\n"
+              << COLOR_OPTION << "7" << COLOR_RESET << "  Start or resume shooting\n"
+              << COLOR_OPTION << "8" << COLOR_RESET << "  Add a crew member/decorator\n"
+              << COLOR_OPTION << "9" << COLOR_RESET << "  Toggle crew presence\n"
+              << COLOR_OPTION << "10" << COLOR_RESET << "  Report an injury\n"
+              << COLOR_OPTION << "11" << COLOR_RESET << "  Find a replacement\n"
+              << COLOR_OPTION << "12" << COLOR_RESET << "  Mark a location filmed\n"
+              << COLOR_OPTION << "13" << COLOR_RESET << "  Finish shooting\n"
+              << COLOR_OPTION << "14" << COLOR_RESET << "  Demonstrate independent iterators\n"
+              << COLOR_OPTION << "15" << COLOR_RESET << "  Run automated tests\n"
+              << COLOR_OPTION << "16" << COLOR_RESET << "  Reset sample film\n"
+              << COLOR_OPTION << "0" << COLOR_RESET << "  Exit\n";
+}
+}
+
+int main() {
+    std::unique_ptr<Film> film = createSampleFilm();
+    title("TaskForge: The Last Frame");
+    std::cout << COLOR_MUTED << "Interactive COS 214 practical demonstration\n" << COLOR_RESET;
+
+    bool running = true;
+    while (running && std::cin.good()) {
+        printMenu();
+        int choice = readChoice("\nSelect an action: ", 0, 16);
+        switch (choice) {
+        case 1: showFilm(*film); break;
+        case 2: addElement(*film); break;
+        case 3: {
+            std::string name = readText("Top-level element to remove: ");
+            std::cout << (film->remove(name) ? COLOR_SUCCESS + std::string("Element removed.\n")
+                                               : COLOR_ERROR + std::string("Element not found.\n"))
+                      << COLOR_RESET;
+            break;
+        }
+        case 4: clearLocation(*film); break;
+        case 5: film->contactAuthorities(); break;
+        case 6: film->confirmAreas(); break;
+        case 7: film->stateName() == "OtherMissing" ? film->resumeShooting() : film->startShooting(); break;
+        case 8: createCrew(*film); break;
+        case 9: togglePresence(*film); break;
+        case 10: reportInjury(*film); break;
+        case 11: replaceCrew(*film); break;
+        case 12: markFilmed(*film); break;
+        case 13: film->finishShooting(); break;
+        case 14: iteratorDemo(*film); break;
+        case 15: testfw::run_all_tests(); break;
+        case 16: film = createSampleFilm(); std::cout << COLOR_SUCCESS << "Sample film reset.\n" << COLOR_RESET; break;
+        case 0: running = false; break;
+        default: break;
+        }
+    }
+    std::cout << COLOR_TITLE << "Goodbye.\n" << COLOR_RESET;
+    return 0;
 }
