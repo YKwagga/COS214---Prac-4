@@ -1,14 +1,12 @@
 CXX      = g++
 CXXFLAGS = -std=c++11 -Wall -g
-SRCDIR   = src
-INCDIR   = include
-SRCS     = $(wildcard $(SRCDIR)/*.cpp)
+SRCS     = $(wildcard *.cpp)
 TARGET   = taskforge
 
 all: $(TARGET)
 
 $(TARGET): $(SRCS)
-	$(CXX) $(CXXFLAGS) -I$(INCDIR) $(SRCS) -o $(TARGET)
+	$(CXX) $(CXXFLAGS) $(SRCS) -o $(TARGET)
 
 run: all
 	./$(TARGET)
