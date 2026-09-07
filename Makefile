@@ -1,5 +1,5 @@
 CXX      = g++
-CXXFLAGS = -std=c++11 -Wall -Werror
+CXXFLAGS = -std=c++11 -Wall -g
 SRCDIR   = src
 INCDIR   = include
 SRCS     = $(wildcard $(SRCDIR)/*.cpp)
