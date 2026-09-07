@@ -2,7 +2,7 @@
 
 COS 214 Practical 4 implementation in C++11. The chosen domain is a film studio
 preparing and executing a shoot. The program models nested production areas and
-locations, crew availability, and the film's operational lifecycle.
+locations, crew availability, decorators, iterators, and the film lifecycle.
 
 ## Design decisions
 
@@ -21,11 +21,13 @@ structural mutation increments a shared version counter; an existing film
 iterator then becomes invalid and a fresh iterator must be created. This avoids
 using pointers into a changed hierarchy.
 
-The State context is `Film`, with these states: `Initial`,
-`PendingAreaConfirmation`, `ReadyForShoot`, `Shooting`, `VIPMissing`,
-`OtherMissing`, and `Finished`. State objects own transition decisions. Area
-confirmation uses the location iterator; shooting recovery uses the crew
-iterator. Invalid actions print a reason and do not mutate the lifecycle.
+The State context is `Film`, with these states: `NotShooting`, `ReadyForShoot`,
+`Shooting`, `OtherMissing`, `Cancelled`, and `Finished`. State objects own
+transition decisions. Area confirmation uses the location iterator; shooting
+recovery uses the crew iterator. A missing VIP or an injured VIP cancels the
+shoot permanently. A missing or injured non-VIP enters `OtherMissing` and can
+recover through an internal replacement or a talent-agency replacement.
+Invalid actions print a reason and do not mutate the lifecycle.
 
 The Decorator component is `CrewMember`. `OnSiteCrew` and `OffSiteCrew` are
 concrete components. `RoleDecorator` adds role and VIP responsibilities at
@@ -43,7 +45,8 @@ make
 ./taskforge
 ```
 
-On Windows with MinGW, use `mingw32-make` and run `taskforge.exe`.
+On Windows with MinGW, use `mingw32-make` and run `taskforge.exe`. The clean
+target handles both Windows and Linux shells.
 
 ## Docker, GDB, and Valgrind
 
@@ -61,24 +64,32 @@ investigation from development, and the final Valgrind output. Those evidence
 items must be captured during development and are intentionally not fabricated
 in this source README.
 
-## Demonstration story
+## Interactive demonstration
 
-The executable first prints the nested production hierarchy. It then attempts
-area confirmation while Stage 2 is uncleared, clears it through a filtered
-iterator, and reaches `ReadyForShoot`. A second pair of independent iterators
-is created; adding Reshoot Stage invalidates the first traversal. The program
-starts shooting, removes the Director, enters `VIPMissing`, recovers when the
-Director returns, prints decorated crew responsibilities, films every cleared
-location, and reaches `Finished`.
+The executable starts with a sample film and a numbered menu. The menu exposes:
 
-## UML sources
+- Composite traversal and hierarchy printing.
+- Adding and removing areas and locations.
+- Individual location clearance and authority clearance for all remaining locations.
+- Area confirmation, starting, resuming, and finishing a shoot.
+- Creating on-site and off-site crew members with role decorators and VIP flags.
+- Presence changes, injury reporting, missing-crew recovery, and replacement selection.
+- Marking locations filmed and demonstrating independent iterator invalidation.
+- Running the automated tests and resetting the sample film.
 
-PlantUML source files are in `docs/`:
+The original scripted `main` remains commented in `src/main.cpp` as a reference.
+The live `main` delegates behavior to the production classes rather than
+duplicating lifecycle logic.
 
-- `class-diagram.puml` maps the four pattern participants and ownership.
-- `object-diagram.puml` shows the runtime production hierarchy and decorated crew.
-- `state-diagram.puml` shows the film lifecycle.
-- `activity-clearance.puml` shows visible location traversal.
-- `activity-shooting.puml` shows lifecycle decisions and parallel crew/location work.
-- `activity-recovery.puml` shows crew absence and recovery.
+## Submission checklist
 
+- Build and run the source with the required C++11 warning-as-error flags.
+- Include the editable Draw.io diagrams and source files with the submission.
+- Capture genuine GDB commands/screenshots for one investigated bug.
+- Capture final Valgrind leak-check output where Valgrind is available.
+- Include the final executable transcript in `output.txt`.
+- Verify that the transcript and README use the implemented state names.
+
+The editable Draw.io diagrams are the workflow reference for clearance,
+authority contact, injury, and replacement. The PlantUML files are retained as
+supporting documentation and are not modified by this implementation pass.

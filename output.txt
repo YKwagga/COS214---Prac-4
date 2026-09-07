@@ -1,36 +1,17 @@
-=== Production hierarchy ===
-  visited: The Last Frame
-  visited: Production Department
-  visited: Studio Complex
-  visited: Stage 1
-  visited: Stage 2
-  visited: Backlot
-  visited: Post Production
-  visited: Sound Booth
+TaskForge interactive demonstration transcript
 
-=== Area confirmation ===
-Area confirmation pending: Stage 2 needs clearance.
-All areas confirmed. Film is ready for shooting.
-Current state: ReadyForShoot
+Startup state: NotShooting
+Menu actions include hierarchy traversal, location clearance, authority contact,
+crew/decorator creation, presence and injury changes, replacements, filming,
+state transitions, iterator invalidation, tests, and sample reset.
 
-=== Independent traversal and structural change ===
-First iterator starts at: The Last Frame
-First iterator invalidated: yes
-Second iterator invalidated: yes
-All areas confirmed. Film is ready for shooting.
+Representative flow:
+  Contact authorities for clearance
+  All areas confirmed. Film is ready for shooting.
+  Shooting started.
+  State changed: other required crew missing.
+  Required crew returned. Shooting can continue.
+  Film finished.
 
-=== Crew availability and state recovery ===
-Shooting started.
-State changed: VIP crew member missing.
-Current state: VIPMissing
-VIP returned. Shooting can continue.
-Current state: Shooting
-State changed: other required crew missing.
-Current state: OtherMissing
-Required crew returned. Shooting can continue.
-Current state: Shooting
-Maya - On-site crew, role: Director [present]
-Jon - On-site crew, role: Actor, role: Stunt performer [present]
-Ravi - Off-site crew, role: Producer [present]
-Film finished.
-Final state: Finished
+The full output depends on menu choices. Run `taskforge` or `taskforge.exe` and
+select menu option 15 to execute the automated regression suite.
